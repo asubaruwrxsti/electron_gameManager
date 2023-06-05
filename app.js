@@ -2,8 +2,16 @@ const {app, BrowserWindow, ipcMain} = require('electron')
 const path = require('path')
 const url = require('url')
 
+const express = require('express');
+const express_app = express();
+
+var configIni = require('config.ini');
+var config = configIni.load('./config.ini');
+
 const { MongoClient, ServerApiVersion } = require("mongodb");
-const uri = "mongodb://0.0.0.0:27017";
+let db_username = config.MONGODB.username;
+let db_password = config.MONGODB.password;
+const uri = `mongodb+srv://${db_username}:${db_password}@cluster.gdgmcws.mongodb.net/?retryWrites=true&w=majority`;
 
 let window = null
 
@@ -17,13 +25,15 @@ app.once('ready', () => {
       const database = client.db("clutchy");
       const collection = database.collection("users");
       const query = { username: "admin", password: "admin" };
-      const options = { upsert: true };
-      const result = await collection.updateOne(query, options);
-      console.log(
-        `${result.matchedCount} document(s) matched the filter, updated ${result.modifiedCount} document(s)`,
-      );
+      const result = collection.find(query).toArray().then((result) => {
+        if(result.length > 0) {
+          console.log("User exists");
+        }
+      });
     } finally {
-      await client.close();
+      setTimeout(() => {
+        client.close();
+      }, 1500);
     }
   }
 
