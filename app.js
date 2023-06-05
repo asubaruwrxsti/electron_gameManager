@@ -13,31 +13,11 @@ let db_username = config.MONGODB.username;
 let db_password = config.MONGODB.password;
 const uri = `mongodb+srv://${db_username}:${db_password}@cluster.gdgmcws.mongodb.net/?retryWrites=true&w=majority`;
 
+const client = new MongoClient(uri, { useUnifiedTopology: true });
 let window = null
 
 // Wait until the app is ready
 app.once('ready', () => {
-
-  const client = new MongoClient(uri, { useUnifiedTopology: true });
-  async function run() {
-    try {
-      await client.connect();
-      const database = client.db("clutchy");
-      const collection = database.collection("users");
-      const query = { username: "admin", password: "admin" };
-      const result = collection.find(query).toArray().then((result) => {
-        if(result.length > 0) {
-          console.log("User exists");
-        }
-      });
-    } finally {
-      setTimeout(() => {
-        client.close();
-      }, 1500);
-    }
-  }
-
-  run().catch(console.dir);
 
   // Create a new window
   window = new BrowserWindow({
@@ -63,11 +43,23 @@ app.once('ready', () => {
   })
 
   ipcMain.on('login', (event, username, password) => {
-    if (username == "admin" && password == "admin") {
-      event.reply('login_response', 'success')
-    } else {
-      event.reply('login_response', 'failure')
+
+    async function run() {
+      try {
+        await client.connect();
+        const database = client.db("clutchy");
+        const collection = database.collection("users");
+        const query = { username: username, password: password };
+        collection.find(query).toArray().then((result) => {
+          result.length > 0 ? event.reply('login_response', `User ${username} logged in!`) : event.reply('login_response', `User ${username} not found!`)
+        });
+      } finally {
+        setTimeout(() => {
+          client.close();
+        }, 1500);
+      }
     }
+    run().catch(console.dir);
   })
 
   // open the devtools
